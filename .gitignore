@@ -1,3 +1,25 @@
+# local file
+local
+data
+checkpoints
+wandb
+work_dirs
+**/work_dirs
+**/work_dir
+**/build
+# docs
+**/_build
+# python cache
+__pycache__
+.pytest_cache
+.cache
+# pip install 
+*.egg-info
+# misc
+.vscode
+.ipynb_checkpoints
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
