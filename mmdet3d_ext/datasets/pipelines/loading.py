@@ -116,8 +116,7 @@ class LoadPointsFromPointCloud2(object):
                 - points (:obj:`BasePoints`): Point clouds data.
         """
 
-        pointcloud2 = results["pointcloud2"]
-        points = self._load_pointcloud2(pointcloud2)
+        points = self._load_pointcloud2(results["pc"])
         points = points[:, self.use_dim]
         attribute_dims = None
 

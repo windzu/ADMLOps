@@ -9,6 +9,7 @@ dataset_type = "KittiDataset"
 class_names = ["Pedestrian", "Cyclist", "Car"]
 point_cloud_range = [0, -39.68, -3, 69.12, 39.68, 1]
 input_modality = dict(use_lidar=True, use_camera=False)
+## NOTE : sampler的设置需要和class对应
 db_sampler = dict(
     data_root=data_root,
     info_path=os.path.join(data_root, "kitti_dbinfos_train.pkl"),

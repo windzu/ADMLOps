@@ -5,10 +5,23 @@ import os
 ###########################################
 data_root = os.path.join(os.environ["ADMLOPS"], "data", "COCO_BDD10K")
 dataset_type = "CocoDataset"
-class_names = ["pedestrian", "rider", "car", "truck", "bus", "train", "motorcycle", "bicycle"]
+class_names = [
+    "pedestrian",
+    "rider",
+    "car",
+    "truck",
+    "bus",
+    "train",
+    "motorcycle",
+    "bicycle",
+]
 img_scale = (640, 640)  # height, width
 
-img_norm_cfg = dict(mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+img_norm_cfg = dict(
+    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True
+)
+# 配置 pipeline 和 dataset
+## NOTE: 因为涉及对seg的处理，而Mosaic等数据增强策略不支持，所以这里的pipeline比较简单
 train_pipeline = [
     dict(type="LoadImageFromFile"),
     dict(type="LoadAnnotations", with_bbox=True, with_mask=True),
@@ -40,7 +53,9 @@ data = dict(
     workers_per_gpu=2,
     train=dict(
         type=dataset_type,
-        ann_file=os.path.join(data_root, "annotations", "instances_train.json"),
+        ann_file=os.path.join(
+            data_root, "annotations", "instances_train.json"
+        ),
         img_prefix=os.path.join(data_root, "train"),
         pipeline=train_pipeline,
     ),
@@ -86,7 +101,11 @@ model = dict(
     ),
     neck=dict(
         type="YOLOXPAFPN",
-        in_channels=[128, 256, 512],  # 输入的每个scale的channel数,与backbone的out_channels对应
+        in_channels=[
+            128,
+            256,
+            512,
+        ],  # 输入的每个scale的channel数,与backbone的out_channels对应
         out_channels=128,  # 输出的channel数
         num_csp_blocks=1,
     ),
@@ -102,7 +121,9 @@ model = dict(
         in_channels=128,  # 输入特征的通道数
         conv_out_channels=256,  # 卷积层输出的通道数
         num_classes=80,
-        loss_mask=dict(type="CrossEntropyLoss", use_mask=True, loss_weight=1.0),
+        loss_mask=dict(
+            type="CrossEntropyLoss", use_mask=True, loss_weight=1.0
+        ),
     ),
     lane_head=dict(
         type="FCNMaskHead",  # 通过FCN进行mask预测
@@ -110,7 +131,9 @@ model = dict(
         in_channels=128,  # 输入特征的通道数
         conv_out_channels=256,  # 卷积层输出的通道数
         num_classes=80,
-        loss_mask=dict(type="CrossEntropyLoss", use_mask=True, loss_weight=1.0),
+        loss_mask=dict(
+            type="CrossEntropyLoss", use_mask=True, loss_weight=1.0
+        ),
     ),
     train_cfg=dict(assigner=dict(type="SimOTAAssigner", center_radius=2.5)),
     # In order to align the source code, the threshold of the val phase is
@@ -152,7 +175,6 @@ log_config = dict(
     interval=50,
     hooks=[
         dict(type="TextLoggerHook"),
-        # dict(type='TensorboardLoggerHook')
     ],
 )
 # yapf:enable
@@ -176,9 +198,9 @@ mp_start_method = "fork"
 auto_scale_lr = dict(enable=False, base_batch_size=16)
 
 
-load_from = os.path.join(
-    os.environ["ADMLOPS"],
-    "checkpoints",
-    "mask_rcnn",
-    "mask_rcnn_r50_fpn_1x_coco_20200205-d4b0c5d6.pth",
-)
+# load_from = os.path.join(
+#     os.environ["ADMLOPS"],
+#     "checkpoints",
+#     "mask_rcnn",
+#     "mask_rcnn_r50_fpn_1x_coco_20200205-d4b0c5d6.pth",
+# )

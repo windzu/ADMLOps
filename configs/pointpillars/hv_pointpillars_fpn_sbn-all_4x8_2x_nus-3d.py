@@ -18,8 +18,6 @@ class_names = [
     "barrier",
 ]
 point_cloud_range = [-50, -50, -5, 50, 50, 3]
-
-
 input_modality = dict(
     use_lidar=True,
     use_camera=False,
@@ -27,8 +25,8 @@ input_modality = dict(
     use_map=False,
     use_external=False,
 )
-
 file_client_args = dict(backend="disk")
+
 train_pipeline = [
     dict(
         type="LoadPointsFromFile",
@@ -57,6 +55,7 @@ train_pipeline = [
     dict(type="DefaultFormatBundle3D", class_names=class_names),
     dict(type="Collect3D", keys=["points", "gt_bboxes_3d", "gt_labels_3d"]),
 ]
+
 test_pipeline = [
     dict(
         type="LoadPointsFromFile",
@@ -95,6 +94,7 @@ test_pipeline = [
         ],
     ),
 ]
+
 eval_pipeline = [
     dict(
         type="LoadPointsFromFile",
@@ -108,6 +108,7 @@ eval_pipeline = [
     ),
     dict(type="Collect3D", keys=["points"]),
 ]
+
 data = dict(
     samples_per_gpu=1,
     workers_per_gpu=1,
@@ -142,6 +143,7 @@ data = dict(
         box_type_3d="LiDAR",
     ),
 )
+
 evaluation = dict(interval=1, pipeline=eval_pipeline)  # interval=24 or 1
 
 ###########################################

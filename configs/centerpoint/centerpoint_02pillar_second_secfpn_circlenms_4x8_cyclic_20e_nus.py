@@ -1,42 +1,35 @@
 import os
 
-admlops_path = os.environ["ADMLOPS_PATH"]
-
 ###########################################
 ########### datasets settings #############
 ###########################################
-
-
-point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
-# For nuScenes we usually do 10-class detection
+data_root = os.path.join(os.environ["ADMLOPS"], "data", "nuScenes_v1.0_mini")
+dataset_type = "NuScenesDataset"
 class_names = [
     "car",
     "truck",
-    "construction_vehicle",
-    "bus",
     "trailer",
-    "barrier",
-    "motorcycle",
+    "bus",
+    "construction_vehicle",
     "bicycle",
+    "motorcycle",
     "pedestrian",
     "traffic_cone",
+    "barrier",
 ]
-
-
-dataset_type = "USDDataset"
-infos_prefix = "usd"
-
-# data_root = admlops_path + "/data/mmdet3d/USD_Apollo/"
-data_root = admlops_path + "/data/mmdet3d/USD_Apollo_SUB/"
-
-input_modality = dict(use_lidar=True, use_camera=False, use_radar=False, use_map=False, use_external=False)
-
+point_cloud_range = [-50, -50, -5, 50, 50, 3]
+input_modality = dict(
+    use_lidar=True,
+    use_camera=False,
+    use_radar=False,
+    use_map=False,
+    use_external=False,
+)
 file_client_args = dict(backend="disk")
-
 
 db_sampler = dict(
     data_root=data_root,
-    info_path=data_root + infos_prefix + "_" + "infos_train.pkl",
+    info_path=os.path.join(data_root, "nuscenes_dbinfos_train.pkl"),
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
@@ -69,23 +62,30 @@ db_sampler = dict(
     points_loader=dict(
         type="LoadPointsFromFile",
         coord_type="LIDAR",
-        load_dim=4,
-        use_dim=[0, 1, 2, 3],
+        load_dim=5,
+        use_dim=[0, 1, 2, 3, 4],
         file_client_args=file_client_args,
     ),
 )
-
 
 train_pipeline = [
     dict(
         type="LoadPointsFromFile",
         coord_type="LIDAR",
-        load_dim=4,
-        use_dim=4,
+        load_dim=5,
+        use_dim=5,
         file_client_args=file_client_args,
     ),
+    dict(
+        type="LoadPointsFromMultiSweeps",
+        sweeps_num=9,
+        use_dim=[0, 1, 2, 3, 4],
+        file_client_args=file_client_args,
+        pad_empty_sweeps=True,
+        remove_close=True,
+    ),
     dict(type="LoadAnnotations3D", with_bbox_3d=True, with_label_3d=True),
-    # dict(type="ObjectSample", db_sampler=db_sampler),
+    dict(type="ObjectSample", db_sampler=db_sampler),
     dict(
         type="GlobalRotScaleTrans",
         rot_range=[-0.3925, 0.3925],
@@ -110,9 +110,17 @@ test_pipeline = [
     dict(
         type="LoadPointsFromFile",
         coord_type="LIDAR",
-        load_dim=4,
-        use_dim=4,
+        load_dim=5,
+        use_dim=5,
         file_client_args=file_client_args,
+    ),
+    dict(
+        type="LoadPointsFromMultiSweeps",
+        sweeps_num=9,
+        use_dim=[0, 1, 2, 3, 4],
+        file_client_args=file_client_args,
+        pad_empty_sweeps=True,
+        remove_close=True,
     ),
     dict(
         type="MultiScaleFlipAug3D",
@@ -127,7 +135,11 @@ test_pipeline = [
                 translation_std=[0, 0, 0],
             ),
             dict(type="RandomFlip3D"),
-            dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
+            dict(
+                type="DefaultFormatBundle3D",
+                class_names=class_names,
+                with_label=False,
+            ),
             dict(type="Collect3D", keys=["points"]),
         ],
     ),
@@ -137,11 +149,21 @@ eval_pipeline = [
     dict(
         type="LoadPointsFromFile",
         coord_type="LIDAR",
-        load_dim=4,
-        use_dim=4,
+        load_dim=5,
+        use_dim=5,
         file_client_args=file_client_args,
     ),
-    dict(type="DefaultFormatBundle3D", class_names=class_names, with_label=False),
+    dict(
+        type="LoadPointsFromMultiSweeps",
+        sweeps_num=9,
+        use_dim=[0, 1, 2, 3, 4],
+        file_client_args=file_client_args,
+        pad_empty_sweeps=True,
+        remove_close=True,
+    ),
+    dict(
+        type="DefaultFormatBundle3D", class_names=class_names, with_label=False
+    ),
     dict(type="Collect3D", keys=["points"]),
 ]
 
@@ -151,17 +173,20 @@ data = dict(
     train=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + infos_prefix + "_" + "infos_train.pkl",
+        ann_file=os.path.join(data_root, "nuscenes_infos_train.pkl"),
         pipeline=train_pipeline,
         classes=class_names,
         modality=input_modality,
         test_mode=False,
+        use_valid_flag=True,
+        # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
+        # and box_type_3d='Depth' in sunrgbd and scannet dataset.
         box_type_3d="LiDAR",
     ),
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + infos_prefix + "_" + "infos_val.pkl",
+        ann_file=os.path.join(data_root, "nuscenes_infos_val.pkl"),
         pipeline=test_pipeline,
         classes=class_names,
         modality=input_modality,
@@ -171,7 +196,7 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=data_root,
-        ann_file=data_root + infos_prefix + "_" + "infos_val.pkl",
+        ann_file=os.path.join(data_root, "nuscenes_infos_val.pkl"),
         pipeline=test_pipeline,
         classes=class_names,
         modality=input_modality,
@@ -196,7 +221,7 @@ model = dict(
     ),
     pts_voxel_encoder=dict(
         type="PillarFeatureNet",
-        in_channels=4,
+        in_channels=5,
         feat_channels=[64],
         with_distance=False,
         voxel_size=(0.2, 0.2, 8),
@@ -238,7 +263,9 @@ model = dict(
             dict(num_class=2, class_names=["motorcycle", "bicycle"]),
             dict(num_class=2, class_names=["pedestrian", "traffic_cone"]),
         ],
-        common_heads=dict(reg=(2, 2), height=(1, 2), dim=(3, 2), rot=(2, 2), vel=(2, 2)),
+        common_heads=dict(
+            reg=(2, 2), height=(1, 2), dim=(3, 2), rot=(2, 2), vel=(2, 2)
+        ),
         share_conv_channel=64,
         bbox_coder=dict(
             type="CenterPointBBoxCoder",
@@ -250,7 +277,9 @@ model = dict(
             code_size=9,
             pc_range=point_cloud_range[:2],
         ),
-        separate_head=dict(type="SeparateHead", init_bias=-2.19, final_kernel=3),
+        separate_head=dict(
+            type="SeparateHead", init_bias=-2.19, final_kernel=3
+        ),
         loss_cls=dict(type="GaussianFocalLoss", reduction="mean"),
         loss_bbox=dict(type="L1Loss", reduction="mean", loss_weight=0.25),
         norm_bbox=True,
@@ -279,7 +308,7 @@ model = dict(
             pc_range=point_cloud_range[:2],
             out_size_factor=4,
             voxel_size=voxel_size[:2],
-            nms_type="rotate",
+            nms_type="circle",
             pre_max_size=1000,
             post_max_size=83,
             nms_thr=0.2,
@@ -335,3 +364,10 @@ workflow = [("train", 1)]
 opencv_num_threads = 0
 # set multi-process start method as `fork` to speed up the training
 mp_start_method = "fork"
+
+load_from = os.path.join(
+    os.environ["ADMLOPS"],
+    "checkpoints",
+    "centerpoint",
+    "centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus.pth",
+)

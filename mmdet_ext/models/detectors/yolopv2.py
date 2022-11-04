@@ -6,45 +6,95 @@ import torch
 from mmdet.models import DETECTORS, build_backbone, build_head, build_neck
 from mmdet.models import BaseDetector
 
+# local
+from mmdet.models import YOLOX
+
 
 @DETECTORS.register_module()
-class YOLOPV2(BaseDetector):
-    """Base class for two-stage detectors.
+class YOLOPV2(YOLOX):
+    """在YOLOX的基础上,增加了drivable_head和lane_head,实现YOLOPV2的复现
 
-    Two-stage detectors typically consisting of a region proposal network and a
-    task-specific regression head.
+    相校于YOLOX的区别:
+    1. 增加了drivable_head和lane_head,这两个head是分割任务的head,用于预测drivable area和lane
+    2. YOLOPV2原版本使用的是Anchor-based的方法,这里将其改为Anchor-free的方法
+
+    需要做的工作如下:
+    1. 修改YOLOX的forward_train,使其支持多个head
     """
 
     def __init__(
         self,
         backbone,
-        neck=None,
-        bbox_head=None,
-        drivable_head=None,
-        lane_head=None,
+        neck,
+        bbox_head,
+        drivable_head=None,  # new head
+        lane_head=None,  # new head
         train_cfg=None,
         test_cfg=None,
         pretrained=None,
+        input_size=(640, 640),
+        size_multiplier=32,
+        random_size_range=(15, 25),
+        random_size_interval=10,
         init_cfg=None,
     ):
-        super(YOLOPV2, self).__init__(init_cfg)
+        super(YOLOPV2, self).__init__(
+            backbone,
+            neck,
+            bbox_head,
+            train_cfg,
+            test_cfg,
+            pretrained,
+            init_cfg,
+        )
 
-        self.backbone = build_backbone(backbone)
-        self.neck = build_neck(neck)
+        # new head init
         self.drivable_head = build_head(drivable_head)
         self.lane_head = build_head(lane_head)
 
-        if bbox_head is not None:
-            # update train and test cfg here for now
-            # TODO: refactor assigner & sampler
-            rcnn_train_cfg = train_cfg.rcnn if train_cfg is not None else None
-            bbox_head.update(train_cfg=rcnn_train_cfg)
-            bbox_head.update(test_cfg=test_cfg.rcnn)
-            bbox_head.pretrained = pretrained
-            self.bbox_head = build_head(bbox_head)
+    def forward_train(
+        self,
+        img,
+        img_metas,
+        gt_bboxes,
+        gt_labels,
+        gt_bboxes_ignore=None,
+        gt_masks=None,
+    ):
+        """
+        forward_train需要重写,使其支持如下功能:
+        1. 支持多个head,包括bbox类型的head和segmentation类型的head
+        2. 支持多个loss
 
-        self.train_cfg = train_cfg
-        self.test_cfg = test_cfg
+        Args:
+            img (Tensor): Input images of shape (N, C, H, W).
+                Typically these should be mean centered and std scaled.
+            img_metas (list[dict]): A List of image info dict where each dict
+                has: 'img_shape', 'scale_factor', 'flip', and may also contain
+                'filename', 'ori_shape', 'pad_shape', and 'img_norm_cfg'.
+                For details on the values of these keys see
+                :class:`mmdet.datasets.pipelines.Collect`.
+            gt_bboxes (list[Tensor]): Each item are the truth boxes for each
+                image in [tl_x, tl_y, br_x, br_y] format.
+            gt_labels (list[Tensor]): Class indices corresponding to each box
+            gt_bboxes_ignore (None | list[Tensor]): Specify which bounding
+                boxes can be ignored when computing the loss.
+        Returns:
+            dict[str, Tensor]: A dictionary of loss components.
+        """
+        # Multi-scale training
+        img, gt_bboxes = self._preprocess(img, gt_bboxes)
+
+        losses = super(YOLOX, self).forward_train(
+            img, img_metas, gt_bboxes, gt_labels, gt_bboxes_ignore
+        )
+
+        # random resizing
+        if (self._progress_in_iter + 1) % self._random_size_interval == 0:
+            self._input_size = self._random_resize(device=img.device)
+        self._progress_in_iter += 1
+
+        return losses
 
     @property
     def with_neck(self):
@@ -54,7 +104,9 @@ class YOLOPV2(BaseDetector):
     @property
     def with_drivable_head(self):
         """bool: whether the detector has a drivable head"""
-        return hasattr(self, "drivable_head") and self.drivable_head is not None
+        return (
+            hasattr(self, "drivable_head") and self.drivable_head is not None
+        )
 
     @property
     def with_lane_head(self):
@@ -155,12 +207,16 @@ class YOLOPV2(BaseDetector):
 
         return losses
 
-    async def async_simple_test(self, img, img_meta, proposals=None, rescale=False):
+    async def async_simple_test(
+        self, img, img_meta, proposals=None, rescale=False
+    ):
         """Async test without augmentation."""
         assert self.with_bbox, "Bbox head must be implemented."
         x = self.extract_feat(img)
 
-        return await self.bbox_head.async_simple_test(x, img_meta, rescale=rescale)
+        return await self.bbox_head.async_simple_test(
+            x, img_meta, rescale=rescale
+        )
 
     def simple_test(self, img, img_metas, proposals=None, rescale=False):
         """Test without augmentation."""
@@ -178,7 +234,9 @@ class YOLOPV2(BaseDetector):
         """
         x = self.extract_feats(imgs)
         proposal_list = self.rpn_head.aug_test_rpn(x, img_metas)
-        return self.roi_head.aug_test(x, proposal_list, img_metas, rescale=rescale)
+        return self.roi_head.aug_test(
+            x, proposal_list, img_metas, rescale=rescale
+        )
 
     def onnx_export(self, img, img_metas):
 

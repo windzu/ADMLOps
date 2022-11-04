@@ -1,10 +1,13 @@
-from .ros_extension import ROSExtension
+from .postprocess import (
+    det2d_postprocess,
+    seg2d_postprocess,
+    det3d_postprocess,
+)
 
-from .postprocess import result_process, img_result_process, pointcloud_result_process
+# from .utils import pc_inference_detector
 
 __all__ = [
-    "ROSExtension",
-    "result_process",
-    "img_result_process",
-    "pointcloud_result_process",
+    det2d_postprocess,
+    seg2d_postprocess,
+    det3d_postprocess,
 ]
