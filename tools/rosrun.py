@@ -1,5 +1,3 @@
-# Copyright (c) OpenMMLab. All rights reserved.
-import asyncio
 from argparse import ArgumentParser
 
 
@@ -17,22 +15,22 @@ import rospy
 from sensor_msgs.msg import Image, CompressedImage, PointCloud2
 from autoware_msgs.msg import DetectedObject, DetectedObjectArray
 
-# mmcv
-import mmcv
-
-# mmdet
-from mmdet.models import build_detector
-from mmdet.apis import init_detector
-from mmdet.datasets import replace_ImageToTensor
-
-# mmdet3d
-from mmdet3d.apis import init_model
-
-# mmseg
-from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
+# # mmcv
+# import mmcv
+#
+# # mmdet
+# from mmdet.models import build_detector
+# from mmdet.apis import init_detector
+# from mmdet.datasets import replace_ImageToTensor
+#
+# # mmdet3d
+# from mmdet3d.apis import init_model
+#
+# # mmseg
+# from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
 
 # local
-from ros_utils import ROSExtension
+# from ros_utils import ROSExtension
 from mmdet_ext.models import *
 from mmdet_ext.datasets import *
 from mmdet3d_ext.datasets import *
@@ -115,6 +113,7 @@ class ROSInterface:
                 self.repub_publisher = rospy.Publisher(
                     self.sub_topic + "/republish", Image, queue_size=1
                 )
+
         elif self.sub_msg_type == "pc":
             rospy.Subscriber(
                 self.sub_topic, PointCloud2, self._callback, queue_size=1, buff_size=2**24
@@ -148,7 +147,12 @@ class ROSInterface:
         result = self.postprocess(result, self.score_thr, self.model.CLASSES, msg.header.frame_id)
 
         # 4. publish result
+        ## 4.1 publish result
         self.publisher.publish(result)
+        ## 4.2 republish msg
+        if self.republish:
+            msg.header.stamp = rospy.Time.now()
+            self.repub_publisher.publish(msg)
 
 
 def parse_args():

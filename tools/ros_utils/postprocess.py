@@ -3,9 +3,12 @@ from scipy.spatial.transform import Rotation as R
 
 # opem-mmlab
 import mmcv
+import cv2
 
 # ros
 import rospy
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 from autoware_msgs.msg import DetectedObject, DetectedObjectArray
 
 
@@ -106,79 +109,16 @@ def seg2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
         frame_id (str, optional): _description_. Defaults to "map".
     """
 
-    def filter_det_result(bboxes=None, labels=None, CLASSES=None, score_thr=0):
-        """parse bboxes and class labels (with scores) on an image.
+    seg = result[0]
+    seg = np.array(seg)
+    seg = seg.astype(np.uint8)
+    seg = cv2.cvtColor(seg, cv2.COLOR_GRAY2BGR)
+    # show result
+    cv2.imshow("seg", seg)
+    cv2.waitKey(1)
 
-        Args:
-            bboxes (ndarray): Bounding boxes (with scores), shaped (n, 4) or (n, 5).
-            labels (ndarray): Labels of bboxes.
-            class_names (list[str]): Names of each classes.
-            score_thr (float): Minimum score of bboxes to be shown. Default: 0.
-
-        Returns:
-            tuple(ndarray,ndarray,list[str]): The image with bboxes drawn on it.
-                bboxes (ndarray): Bounding boxes (with scores), shaped (n, 4) or (n, 5).
-                labels (ndarray): Labels of bboxes.
-                class_names (list[str]): Names of each classes.
-        """
-        assert (
-            bboxes is None or bboxes.ndim == 2
-        ), f" bboxes ndim should be 2, but its ndim is {bboxes.ndim}."
-        assert labels.ndim == 1, f" labels ndim should be 1, but its ndim is {labels.ndim}."
-        assert (
-            bboxes is None or bboxes.shape[1] == 4 or bboxes.shape[1] == 5
-        ), f" bboxes.shape[1] should be 4 or 5, but its {bboxes.shape[1]}."
-        assert (
-            bboxes is None or bboxes.shape[0] <= labels.shape[0]
-        ), "labels.shape[0] should not be less than bboxes.shape[0]."
-
-        if score_thr > 0:
-            assert bboxes is not None and bboxes.shape[1] == 5
-            scores = bboxes[:, -1]
-            inds = scores > score_thr
-            bboxes = bboxes[inds, :]
-            labels = labels[inds]
-            class_names = [CLASSES[label] for label in labels.tolist()]
-
-        return (bboxes, labels, class_names)
-
-    if isinstance(result, tuple):
-        bbox_result, segm_result = result
-        if isinstance(segm_result, tuple):
-            segm_result = segm_result[0]  # ms rcnn
-            # NOTE : 暂时不支持分割结果
-    else:
-        bbox_result, segm_result = result, None
-    bboxes = np.vstack(bbox_result)
-    labels = [np.full(bbox.shape[0], i, dtype=np.int32) for i, bbox in enumerate(bbox_result)]
-    labels = np.concatenate(labels)
-    # draw segmentation masks
-    # NOTE : 暂时不支持分割结果
-
-    # filter results
-    (bboxes, labels, class_names) = filter_det_result(
-        bboxes=bboxes,
-        labels=labels,
-        CLASSES=CLASSES,
-        score_thr=score_thr,
-    )
-
-    # convert result to DetectedObjectArray
+    # TODO : convert result to DetectedObjectArray
     detected_objects = DetectedObjectArray()
-    detected_objects.header.stamp = rospy.Time.now()
-    detected_objects.header.frame_id = frame_id
-    for i in range(len(bboxes)):
-        detected_object = DetectedObject()
-        detected_object.header.stamp = rospy.Time.now()
-        detected_object.header.frame_id = frame_id
-        detected_object.label = class_names[i]
-        detected_object.score = bboxes[i][4]
-        detected_object.x = int(bboxes[i][0])
-        detected_object.y = int(bboxes[i][1])
-        detected_object.width = int(bboxes[i][2]) - int(bboxes[i][0])
-        detected_object.height = int(bboxes[i][3]) - int(bboxes[i][1])
-
-        detected_objects.objects.append(detected_object)
 
     return detected_objects
 

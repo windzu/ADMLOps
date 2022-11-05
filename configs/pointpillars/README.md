@@ -60,6 +60,8 @@ python3 tools/rosrun.py --config $ADMLOPS/configs/pointpillars/hv_pointpillars_f
 
 
 
+
+
 ## KITTI
 ### Data Preparation
 > 在此之前需要从数据集生成约定的pkl文件，如果已生成则可继续下一步骤即可(这个步骤比较消耗时间)
