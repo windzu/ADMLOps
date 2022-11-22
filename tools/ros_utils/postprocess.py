@@ -1,19 +1,15 @@
-import numpy as np
-from scipy.spatial.transform import Rotation as R
+# Copyright (c) windzu. All rights reserved.
 
-# opem-mmlab
-import mmcv
 import cv2
-
+import numpy as np
 # ros
 import rospy
-from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
 from autoware_msgs.msg import DetectedObject, DetectedObjectArray
+from scipy.spatial.transform import Rotation as R
 
 
-def det2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
-    """对 2d det 结果进行后处理, 返回autoware_msgs.msg.DetectedObjectArray
+def det2d_postprocess(result, score_thr, CLASSES, frame_id='map'):
+    """对 2d det 结果进行后处理, 返回autoware_msgs.msg.DetectedObjectArray.
 
     Args:
         result (tuple): 2d bbox检测结果
@@ -26,27 +22,29 @@ def det2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
         """parse bboxes and class labels (with scores) on an image.
 
         Args:
-            bboxes (ndarray): Bounding boxes (with scores), shaped (n, 4) or (n, 5).
+            bboxes (ndarray): Bounding boxes (with scores),
+            shaped (n, 4) or (n, 5).
             labels (ndarray): Labels of bboxes.
             CLASSES (list[str]): Names of each classes.
             score_thr (float): Minimum score of bboxes to be shown. Default: 0.
 
         Returns:
-            tuple(ndarray,ndarray,list[str]): The image with bboxes drawn on it.
-                bboxes (ndarray): Bounding boxes (with scores), shaped (n, 4) or (n, 5).
+            tuple(ndarray,ndarray,list[str]): bboxes, labels, class_names
+                bboxes (ndarray): Bounding boxes (with scores),
+            shaped (n, 4) or (n, 5).
                 labels (ndarray): Labels of bboxes.
                 class_names (list[str]): Names of each classes.
         """
-        assert (
-            bboxes is None or bboxes.ndim == 2
-        ), f" bboxes ndim should be 2, but its ndim is {bboxes.ndim}."
-        assert labels.ndim == 1, f" labels ndim should be 1, but its ndim is {labels.ndim}."
+        assert (bboxes is None or bboxes.ndim == 2
+                ), f' bboxes ndim should be 2, but its ndim is {bboxes.ndim}.'
+        assert labels.ndim == 1, f' labels ndim should be 1, \
+        but its ndim is {labels.ndim}.'
+
         assert (
             bboxes is None or bboxes.shape[1] == 4 or bboxes.shape[1] == 5
-        ), f" bboxes.shape[1] should be 4 or 5, but its {bboxes.shape[1]}."
-        assert (
-            bboxes is None or bboxes.shape[0] <= labels.shape[0]
-        ), "labels.shape[0] should not be less than bboxes.shape[0]."
+        ), f' bboxes.shape[1] should be 4 or 5, but its {bboxes.shape[1]}.'
+        assert (bboxes is None or bboxes.shape[0] <= labels.shape[0]
+                ), 'labels.shape[0] should not be less than bboxes.shape[0].'
 
         if score_thr > 0:
             assert bboxes is not None and bboxes.shape[1] == 5
@@ -66,7 +64,10 @@ def det2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
     else:
         bbox_result, segm_result = result, None
     bboxes = np.vstack(bbox_result)
-    labels = [np.full(bbox.shape[0], i, dtype=np.int32) for i, bbox in enumerate(bbox_result)]
+    labels = [
+        np.full(bbox.shape[0], i, dtype=np.int32)
+        for i, bbox in enumerate(bbox_result)
+    ]
     labels = np.concatenate(labels)
     # draw segmentation masks
     # NOTE : 暂时不支持分割结果
@@ -99,8 +100,8 @@ def det2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
     return detected_objects
 
 
-def seg2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
-    """对 2d seg 结果进行后处理, 返回autoware_msgs.msg.DetectedObjectArray
+def seg2d_postprocess(result, score_thr, CLASSES, frame_id='map'):
+    """对 2d seg 结果进行后处理, 返回autoware_msgs.msg.DetectedObjectArray.
 
     Args:
         result (Tensor): 分割结果,shape为(H, W),每个像素点的数值对应一个类别的id
@@ -114,7 +115,7 @@ def seg2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
     seg = seg.astype(np.uint8)
     seg = cv2.cvtColor(seg, cv2.COLOR_GRAY2BGR)
     # show result
-    cv2.imshow("seg", seg)
+    cv2.imshow('seg', seg)
     cv2.waitKey(1)
 
     # TODO : convert result to DetectedObjectArray
@@ -123,8 +124,8 @@ def seg2d_postprocess(result, score_thr, CLASSES, frame_id="map"):
     return detected_objects
 
 
-def det3d_postprocess(result, score_thr, CLASSES, frame_id="map"):
-    """对 3d det 结果进行后处理, 返回autoware_msgs.msg.DetectedObjectArray
+def det3d_postprocess(result, score_thr, CLASSES, frame_id='map'):
+    """对 3d det 结果进行后处理, 返回autoware_msgs.msg.DetectedObjectArray.
 
     Args:
         result (_type_): _description_
@@ -141,14 +142,14 @@ def det3d_postprocess(result, score_thr, CLASSES, frame_id="map"):
     # results是一个list, 每个元素是一个dict, 对应一个输入的检测结果
     result = results[0]
 
-    if "pts_bbox" in result.keys():
-        pred_bboxes = result["pts_bbox"]["boxes_3d"].tensor.numpy()
-        pred_scores = result["pts_bbox"]["scores_3d"].numpy()
-        pred_labels = result["pts_bbox"]["labels_3d"].numpy()
+    if 'pts_bbox' in result.keys():
+        pred_bboxes = result['pts_bbox']['boxes_3d'].tensor.numpy()
+        pred_scores = result['pts_bbox']['scores_3d'].numpy()
+        pred_labels = result['pts_bbox']['labels_3d'].numpy()
     else:
-        pred_bboxes = result["boxes_3d"].tensor.numpy()
-        pred_scores = result["scores_3d"].numpy()
-        pred_labels = result["labels_3d"].numpy()
+        pred_bboxes = result['boxes_3d'].tensor.numpy()
+        pred_scores = result['scores_3d'].numpy()
+        pred_labels = result['labels_3d'].numpy()
 
     # filter the result
     if score_thr > 0:
@@ -193,7 +194,7 @@ def det3d_postprocess(result, score_thr, CLASSES, frame_id="map"):
 
         # orientation
         # get quaternion from yaw axis euler angles
-        r = R.from_euler("z", yaw, degrees=False)
+        r = R.from_euler('z', yaw, degrees=False)
         q = r.as_quat()
         detected_object.pose.orientation.x = q[0]
         detected_object.pose.orientation.y = q[1]

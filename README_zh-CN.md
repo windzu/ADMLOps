@@ -40,7 +40,6 @@ ADMLOps是一个针对自动驾驶感知任务的MLOps开源工具，目标是�
 
   ADMLOps的模型部分主要基于 open-mmlab 的系列工具，借助其优秀的模块化设计，可以轻松的将检测框架解耦成不同的模块组件，通过组合不同的模块组件，用户可以便捷地构建自定义的检测模型
 
-
 - **紧贴实践**
 
   ADMLOps 项目的起源是为了提高个人在自动驾驶感知工作中的效率，因此在设计时，ADMLOps 的很多模块都是紧贴实践的，例如传感器的选型、方案的选择、如何标定、数据采集、数据标注、模型的选择、模型的训练、模型的部署等等，都是基于实际工作中的经验总结
@@ -57,15 +56,16 @@ ADMLOps是一个针对自动驾驶感知任务的MLOps开源工具，目标是�
 
 最新的 **1.0.0** 版本
 
-- 基于open-mmlab的一系列框架为基础搭建，具体版本如下
-    
-    - mmcv：.6.2
-    - mmdetection：2.25.1
-    - mmsegmentation：0.29.0
-    - mmdetection3d：1.0.0rc4
-- 
+- 基于open-mmlab的一系列框架为基础搭建，并确定了基础版本，具体如下
 
-如果想了解更多版本更新细节和历史信息，请阅读[更新日志](docs/en/changelog.md)
+  - mmcv：.6.2
+  - mmdetection：2.25.1
+  - mmsegmentation：0.29.0
+  - mmdetection3d：1.0.0rc4
+
+- 增加了对 pointpillars tensorrt 部署
+
+如果想了解更多版本更新细节和历史信息，请阅读[更新日志](docs/zh_cn/changelog.md)
 
 ### 🌟 2.x 预览版本
 
@@ -73,13 +73,13 @@ ADMLOps是一个针对自动驾驶感知任务的MLOps开源工具，目标是�
 
 ## 教程
 
-请参考[快速入门文档](docs/zh_cn/get_started.md)学习 ADMLOps 的基本使用。
-如果你想使用 ADMLOps 速通一遍自动驾驶感知的整个流程，可以按照以下步骤进行：
+请参考[快速入门文档](docs/zh_cn/get_started.md)学习 ADMLOps 的基本使用。所有教程均按照如下结构组织：
 
-- [准备数据集](docs/zh_cn/1_exist_data_model.md)
-- [在自定义数据集上进行训练](docs/zh_cn/2_new_data_model.md)
-- [在标准数据集上训练自定义模型](docs/zh_cn/3_exist_data_new_model.md)
-- [模型部署](docs/zh_cn/tutorials/config.md)
+- 准备数据集
+- 在数据集上训练已有模型
+- 在数据集上训练自定义模型
+- 模型推理测试
+- 模型部署
 
 ## 常见问题
 
@@ -87,7 +87,7 @@ ADMLOps是一个针对自动驾驶感知任务的MLOps开源工具，目标是�
 
 ## 贡献指南
 
-我们感谢所有的贡献者为改进和提升 ADMLOps 所作出的努力。我们将正在进行中的项目添加进了[GitHub Projects](https://github.com/windzu/admlops/projects)页面，非常欢迎社区用户能参与进这些项目中来。请参考[贡献指南](.github/CONTRIBUTING.md)来了解参与项目贡献的相关指引
+我们感谢所有的贡献者为改进和提升 ADMLOps 所作出的努力。我们将正在进行中的项目添加进了[GitHub Projects](https://github.com/windzu/admlops/projects)页面，非常欢迎社区用户能参与进这些项目中来。请参考[贡献指南](CONTRIBUTING.md)来了解参与项目贡献的相关指引
 
 ## 开源许可证
 

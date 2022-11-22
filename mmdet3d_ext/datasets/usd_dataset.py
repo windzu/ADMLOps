@@ -1,17 +1,15 @@
-# Copyright (c) OpenMMLab. All rights reserved.
-import tempfile
+# Copyright (c) windzu. All rights reserved.
 import warnings
 from os import path as osp
 
 import mmcv
 import numpy as np
-from torch.utils.data import Dataset
 from mmcv.utils import print_log
-
 from mmdet3d.core.bbox import get_box_type
 from mmdet3d.datasets.builder import DATASETS
 from mmdet3d.datasets.pipelines import Compose
 from mmdet3d.datasets.utils import extract_result_dict, get_loading_pipeline
+from torch.utils.data import Dataset
 
 
 @DATASETS.register_module()
@@ -90,16 +88,16 @@ class USDDataset(Dataset):
     """
 
     def __init__(
-        self,
-        data_root,
-        ann_file,
-        pipeline=None,
-        classes=None,
-        modality=None,
-        box_type_3d="LiDAR",
-        filter_empty_gt=True,
-        test_mode=False,
-        file_client_args=dict(backend="disk"),
+            self,
+            data_root,
+            ann_file,
+            pipeline=None,
+            classes=None,
+            modality=None,
+            box_type_3d='LiDAR',
+            filter_empty_gt=True,
+            test_mode=False,
+            file_client_args=dict(backend='disk'),
     ):
         super().__init__()
         self.data_root = data_root
@@ -114,16 +112,15 @@ class USDDataset(Dataset):
         self.cat2id = {name: i for i, name in enumerate(self.CLASSES)}
 
         # load annotations
-        if hasattr(self.file_client, "get_local_path"):
+        if hasattr(self.file_client, 'get_local_path'):
             with self.file_client.get_local_path(self.ann_file) as local_path:
-                self.data_infos = self.load_annotations(open(local_path, "rb"))
+                self.data_infos = self.load_annotations(open(local_path, 'rb'))
         else:
             warnings.warn(
-                "The used MMCV version does not have get_local_path. "
-                f"We treat the {self.ann_file} as local paths and it "
-                "might cause errors if the path is not a local path. "
-                "Please use MMCV>= 1.3.16 if you meet errors."
-            )
+                'The used MMCV version does not have get_local_path. '
+                f'We treat the {self.ann_file} as local paths and it '
+                'might cause errors if the path is not a local path. '
+                'Please use MMCV>= 1.3.16 if you meet errors.')
             self.data_infos = self.load_annotations(self.ann_file)
 
         # process pipeline
@@ -144,7 +141,7 @@ class USDDataset(Dataset):
             list[dict]: List of annotations.
         """
         # loading data from a file-like object needs file format
-        return mmcv.load(ann_file, file_format="pkl")
+        return mmcv.load(ann_file, file_format='pkl')
 
     def get_data_info(self, index):
         """从标注文件中获取满足条件的数据信息
@@ -170,18 +167,18 @@ class USDDataset(Dataset):
         # - parse point_clouds_info
         # TODO: support multi-lidar，暂时只使用一个默认的lidar
         # -- lidar是否应该只有一个呢？如果有多个，那么应该如何处理呢？
-        point_clouds_info = raw_info["point_clouds"]
-        pts_filename = osp.join(
-            self.data_root, raw_info["scene_name"], "LIDAR", point_clouds_info["LIDAR"]["file_name"]
-        )
+        point_clouds_info = raw_info['point_clouds']
+        pts_filename = osp.join(self.data_root, raw_info['scene_name'],
+                                'LIDAR',
+                                point_clouds_info['LIDAR']['file_name'])
         # 如果点云文件不存在，直接返回None,会跳过并进行下一个数据的选择
         if not osp.exists(pts_filename):
             return None
 
         # - parse annotations_info
         # TODO : 解析图像的标注信息
-        raw_gt_bboxes_3d = point_clouds_info["LIDAR"]["annos"]["bbox3d"]
-        raw_gt_names_3d = point_clouds_info["LIDAR"]["annos"]["class_names"]
+        raw_gt_bboxes_3d = point_clouds_info['LIDAR']['annos']['bbox3d']
+        raw_gt_names_3d = point_clouds_info['LIDAR']['annos']['class_names']
         gt_labels_3d = []
         for cat in raw_gt_names_3d:
             if cat in self.CLASSES:
@@ -189,25 +186,27 @@ class USDDataset(Dataset):
             else:
                 gt_labels_3d.append(-1)
         gt_labels_3d = np.array(gt_labels_3d)
-        ##  对3d bbox 进行转换
-        ori_box_type_3d = point_clouds_info["LIDAR"]["annos"]["box_type_3d"]  # default: LiDAR
+        # 对3d bbox 进行转换
+        ori_box_type_3d = point_clouds_info['LIDAR']['annos'][
+            'box_type_3d']  # default: LiDAR
         ori_box_type_3d, _ = get_box_type(ori_box_type_3d)
         # turn original box type to target box type
 
         gt_bboxes_3d = ori_box_type_3d(
-            raw_gt_bboxes_3d, box_dim=raw_gt_bboxes_3d.shape[-1], origin=(0.5, 0.5, 0.5)
-        ).convert_to(self.box_mode_3d)
+            raw_gt_bboxes_3d,
+            box_dim=raw_gt_bboxes_3d.shape[-1],
+            origin=(0.5, 0.5, 0.5)).convert_to(self.box_mode_3d)
         ann_info = {
-            "gt_bboxes_3d": gt_bboxes_3d,
-            "gt_labels_3d": gt_labels_3d,
+            'gt_bboxes_3d': gt_bboxes_3d,
+            'gt_labels_3d': gt_labels_3d,
         }
 
         result = {
-            "seq": raw_info["seq"],
-            "pts_filename": pts_filename,
-            "ann_info": ann_info,
-            "timestamp": 0.0,
-            "sweeps": [],
+            'seq': raw_info['seq'],
+            'pts_filename': pts_filename,
+            'ann_info': ann_info,
+            'timestamp': 0.0,
+            'sweeps': [],
         }
         return result
 
@@ -227,15 +226,15 @@ class USDDataset(Dataset):
                 - box_type_3d (str): 3D box type.
                 - box_mode_3d (str): 3D box mode.
         """
-        results["img_fields"] = []
-        results["bbox3d_fields"] = []
-        results["pts_mask_fields"] = []
-        results["pts_seg_fields"] = []
-        results["bbox_fields"] = []
-        results["mask_fields"] = []
-        results["seg_fields"] = []
-        results["box_type_3d"] = self.box_type_3d
-        results["box_mode_3d"] = self.box_mode_3d
+        results['img_fields'] = []
+        results['bbox3d_fields'] = []
+        results['pts_mask_fields'] = []
+        results['pts_seg_fields'] = []
+        results['bbox_fields'] = []
+        results['mask_fields'] = []
+        results['seg_fields'] = []
+        results['box_type_3d'] = self.box_type_3d
+        results['box_mode_3d'] = self.box_mode_3d
 
     def prepare_train_data(self, index):
         """Training data preparation.
@@ -251,7 +250,9 @@ class USDDataset(Dataset):
             return None
         self.pre_pipeline(input_dict)
         example = self.pipeline(input_dict)
-        if self.filter_empty_gt and (example is None or ~(example["gt_labels_3d"]._data != -1).any()):
+        if self.filter_empty_gt and (
+                example is None
+                or ~(example['gt_labels_3d']._data != -1).any()):
             return None
 
         return example
@@ -293,13 +294,13 @@ class USDDataset(Dataset):
         elif isinstance(classes, (tuple, list)):
             class_names = classes
         else:
-            raise ValueError(f"Unsupported type {type(classes)} of classes.")
+            raise ValueError(f'Unsupported type {type(classes)} of classes.')
 
         return class_names
 
     def format_dt_annos(self, dt_annos):
-        """将检测结果格式化,便于与标注文件进行eval计算.
-        返回的格式如下：
+        """将检测结果格式化,便于与标注文件进行eval计算. 返回的格式如下：
+
         - 对于3d检测任务的格式化结果示例如下:
             [
                 {
@@ -322,14 +323,15 @@ class USDDataset(Dataset):
         """
 
         # - 输入输出检查，其长度应该相同
-        assert len(dt_annos) == len(self.data_infos), "invalid list length of network outputs"
+        assert len(dt_annos) == len(
+            self.data_infos), 'invalid list length of network outputs'
 
         # - 将网络的在test模式下的输出结果转换为eval所需的格式
         # TODO ： 针对eval任务的不同，需要做一些修改，目前仅仅针对的是3d检测的任务
         # - 增加对3d检测任务的判断以及处理支持
         # - 增加对3d分割任务的判断以及处理支持
         result_annos = []
-        print("\nConverting prediction to lidar format")
+        print('\nConverting prediction to lidar format')
         for idx, pred_dicts in enumerate(mmcv.track_iter_progress(dt_annos)):
 
             annos = []
@@ -338,50 +340,52 @@ class USDDataset(Dataset):
             sample_idx = -1
 
             anno = {
-                "name": [],
-                "location": [],
-                "dimensions": [],
-                "rotation_y": [],
-                "score": [],
+                'name': [],
+                'location': [],
+                'dimensions': [],
+                'rotation_y': [],
+                'score': [],
             }
 
             # 在3d检测任务中，pred_dicts中包含了多个类别的检测结果
             # 点云的3d检测任务的结果有时候存放在 pts_bbox 这个key中，所以需呀要做一下判断
-            if "pts_bbox" in pred_dicts:
-                pred_dicts = pred_dicts["pts_bbox"]
+            if 'pts_bbox' in pred_dicts:
+                pred_dicts = pred_dicts['pts_bbox']
 
-            if len(pred_dicts["boxes_3d"]) > 0:
-                boxes_3d = pred_dicts["boxes_3d"]
-                scores_3d = pred_dicts["scores_3d"]
-                labels_3d = pred_dicts["labels_3d"]
+            if len(pred_dicts['boxes_3d']) > 0:
+                boxes_3d = pred_dicts['boxes_3d']
+                scores_3d = pred_dicts['scores_3d']
+                labels_3d = pred_dicts['labels_3d']
 
                 # TODO：这个填充的方式太丑陋了，不应该需要循环，有待改进
-                for (box_3d, score_3d, label_3d) in zip(boxes_3d, scores_3d, labels_3d):
-                    anno["name"].append(self.CLASSES[int(label_3d)])
-                    anno["location"].append(box_3d[:3])
-                    anno["dimensions"].append(box_3d[3:6])
-                    anno["rotation_y"].append(box_3d[6])
-                    anno["score"].append(score_3d)
+                for (box_3d, score_3d,
+                     label_3d) in zip(boxes_3d, scores_3d, labels_3d):
+                    anno['name'].append(self.CLASSES[int(label_3d)])
+                    anno['location'].append(box_3d[:3])
+                    anno['dimensions'].append(box_3d[3:6])
+                    anno['rotation_y'].append(box_3d[6])
+                    anno['score'].append(score_3d)
                 anno = {k: np.stack(v) for k, v in anno.items()}
                 annos.append(anno)
             else:
                 anno = {
-                    "name": np.array([]),
-                    "location": np.zeros([0, 3]),
-                    "dimensions": np.zeros([0, 3]),
-                    "rotation_y": np.array([]),
-                    "score": np.array([]),
+                    'name': np.array([]),
+                    'location': np.zeros([0, 3]),
+                    'dimensions': np.zeros([0, 3]),
+                    'rotation_y': np.array([]),
+                    'score': np.array([]),
                 }
                 annos.append(anno)
-            annos[-1]["sample_idx"] = np.array([sample_idx] * len(annos[-1]["score"]), dtype=np.int64)
+            annos[-1]['sample_idx'] = np.array(
+                [sample_idx] * len(annos[-1]['score']), dtype=np.int64)
 
             result_annos += annos
 
         return result_annos
 
     def format_gt_annos(self, gt_annos):
-        """将gt格式化,便于进行eval计算.
-        返回的格式如下：
+        """将gt格式化,便于进行eval计算. 返回的格式如下：
+
         - 对于3d检测任务的格式化结果示例如下:
             [
                 {
@@ -403,14 +407,15 @@ class USDDataset(Dataset):
             (list[dict]): 格式化后的gt
         """
         # - 输入输出检查，其长度应该相同
-        assert len(gt_annos) == len(self.data_infos), "invalid list length of network outputs"
+        assert len(gt_annos) == len(
+            self.data_infos), 'invalid list length of network outputs'
 
         # - 将网络的在test模式下的输出结果转换为eval所需的格式
         # TODO ： 针对eval任务的不同，需要做一些修改，目前仅仅针对的是3d检测的任务
         # - 增加对3d检测任务的判断以及处理支持
         # - 增加对3d分割任务的判断以及处理支持
         result_annos = []
-        print("\nConverting prediction to lidar format")
+        print('\nConverting prediction to lidar format')
         for idx, gt_dicts in enumerate(mmcv.track_iter_progress(gt_annos)):
 
             annos = []
@@ -419,36 +424,37 @@ class USDDataset(Dataset):
             sample_idx = -1
 
             anno = {
-                "name": [],
-                "location": [],
-                "dimensions": [],
-                "rotation_y": [],
-                "score": [],
+                'name': [],
+                'location': [],
+                'dimensions': [],
+                'rotation_y': [],
+                'score': [],
             }
 
-            if len(gt_dicts["gt_bboxes_3d"]) > 0:
-                boxes_3d = gt_dicts["gt_bboxes_3d"]
+            if len(gt_dicts['gt_bboxes_3d']) > 0:
+                boxes_3d = gt_dicts['gt_bboxes_3d']
                 # scores_3d = gt_dicts["scores_3d"] 没有scores_3d字段
-                labels_3d = gt_dicts["gt_labels_3d"]
+                labels_3d = gt_dicts['gt_labels_3d']
 
                 for (box_3d, label_3d) in zip(boxes_3d, labels_3d):
-                    anno["name"].append(self.CLASSES[int(label_3d)])
-                    anno["location"].append(box_3d[:3])
-                    anno["dimensions"].append(box_3d[3:6])
-                    anno["rotation_y"].append(box_3d[6])
-                    anno["score"].append(0)
+                    anno['name'].append(self.CLASSES[int(label_3d)])
+                    anno['location'].append(box_3d[:3])
+                    anno['dimensions'].append(box_3d[3:6])
+                    anno['rotation_y'].append(box_3d[6])
+                    anno['score'].append(0)
                 anno = {k: np.stack(v) for k, v in anno.items()}
                 annos.append(anno)
             else:
                 anno = {
-                    "name": np.array([]),
-                    "location": np.zeros([0, 3]),
-                    "dimensions": np.zeros([0, 3]),
-                    "rotation_y": np.array([]),
-                    "score": np.array([]),
+                    'name': np.array([]),
+                    'location': np.zeros([0, 3]),
+                    'dimensions': np.zeros([0, 3]),
+                    'rotation_y': np.array([]),
+                    'score': np.array([]),
                 }
                 annos.append(anno)
-            annos[-1]["sample_idx"] = np.array([sample_idx] * len(annos[-1]["score"]), dtype=np.int64)
+            annos[-1]['sample_idx'] = np.array(
+                [sample_idx] * len(annos[-1]['score']), dtype=np.int64)
 
             result_annos += annos
 
@@ -457,7 +463,7 @@ class USDDataset(Dataset):
     def evaluate(
         self,
         results,
-        metric=["bev", "3d"],
+        metric=['bev', '3d'],
         logger=None,
         show=False,
         out_dir=None,
@@ -467,7 +473,8 @@ class USDDataset(Dataset):
 
         Args:
             results (list[dict]): test模式下的检测结果.
-            metric (str | list[str], optional): Metrics to be evaluated.Defaults to ["bev", "3d"].
+            metric (str | list[str], optional): Metrics to be evaluated.
+            Defaults to ["bev", "3d"].
             logger (logging.Logger | str, optional): Logger used for printing
                 related information during evaluation. Defaults to None.
             show (bool, optional): Whether to visualize.
@@ -480,7 +487,10 @@ class USDDataset(Dataset):
         Returns:
             dict: Evaluation results.
         """
-        gt_annos = [self.get_data_info(i)["ann_info"] for i in range(len(self.data_infos))]
+        gt_annos = [
+            self.get_data_info(i)['ann_info']
+            for i in range(len(self.data_infos))
+        ]
 
         dt_annos_after_format = self.format_dt_annos(results)
         gt_annos_after_format = self.format_gt_annos(gt_annos)
@@ -493,7 +503,7 @@ class USDDataset(Dataset):
             eval_types=metric,  # default evaluate bev and 3d
         )
 
-        print_log("\n" + ap_result_str, logger=logger)
+        print_log('\n' + ap_result_str, logger=logger)
 
         # TODO : 可视化的查看评估结果曲线
         # if show or out_dir:
@@ -503,9 +513,8 @@ class USDDataset(Dataset):
 
     def _build_default_pipeline(self):
         """Build the default pipeline for this dataset."""
-        raise NotImplementedError(
-            "_build_default_pipeline is not implemented " f"for dataset {self.__class__.__name__}"
-        )
+        raise NotImplementedError('_build_default_pipeline is not implemented '
+                                  f'for dataset {self.__class__.__name__}')
 
     def _get_pipeline(self, pipeline):
         """Get data loading pipeline in self.show/evaluate function.
@@ -515,8 +524,10 @@ class USDDataset(Dataset):
                 get from self.pipeline.
         """
         if pipeline is None:
-            if not hasattr(self, "pipeline") or self.pipeline is None:
-                warnings.warn("Use default pipeline for data loading, this may cause " "errors when data is on ceph")
+            if not hasattr(self, 'pipeline') or self.pipeline is None:
+                warnings.warn(
+                    'Use default pipeline for data loading, this may cause '
+                    'errors when data is on ceph')
                 return self._build_default_pipeline()
             loading_pipeline = get_loading_pipeline(self.pipeline.transforms)
             return Compose(loading_pipeline)
@@ -536,7 +547,7 @@ class USDDataset(Dataset):
             np.ndarray | torch.Tensor | list[np.ndarray | torch.Tensor]:
                 A single or a list of loaded data.
         """
-        assert pipeline is not None, "data loading pipeline is not provided"
+        assert pipeline is not None, 'data loading pipeline is not provided'
         # when we want to load ground-truth via pipeline (e.g. bbox, seg mask)
         # we need to set self.test_mode as False so that we have 'annos'
         if load_annos:

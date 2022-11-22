@@ -1,5 +1,4 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-from __future__ import division
 import argparse
 import copy
 import os
@@ -12,7 +11,6 @@ import torch
 import torch.distributed as dist
 from mmcv import Config, DictAction
 from mmcv.runner import get_dist_info, init_dist
-
 from mmdet import __version__ as mmdet_version
 from mmdet3d import __version__ as mmdet3d_version
 from mmdet3d.apis import init_random_seed, train_model

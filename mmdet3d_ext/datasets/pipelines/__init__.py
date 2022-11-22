@@ -1,11 +1,8 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) windzu. All rights reserved.
 
-from .loading import (
-    LoadPointsFromPointCloud2,
-    LoadPointsFromFileExtension,
-)
+from .loading import LoadPointsFromFileExtension, LoadPointsFromPointCloud2
 
 __all__ = [
-    "LoadPointsFromPointCloud2",
-    "LoadPointsFromFileExtension",
+    'LoadPointsFromPointCloud2',
+    'LoadPointsFromFileExtension',
 ]

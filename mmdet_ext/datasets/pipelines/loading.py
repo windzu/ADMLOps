@@ -1,28 +1,19 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) windzu. All rights reserved.
 import os.path as osp
 
 import mmcv
 import numpy as np
-import pycocotools.mask as maskUtils
-
-from mmdet.core import BitmapMasks, PolygonMasks
 from mmdet.datasets.builder import PIPELINES
 
-
-# ros
-import rospy
-from sensor_msgs.msg import Image
-
-
-try:
-    from panopticapi.utils import rgb2id
-except ImportError:
-    rgb2id = None
+# try:
+#     from panopticapi.utils import rgb2id
+# except ImportError:
+#     rgb2id = None
 
 
 @PIPELINES.register_module()
 class LoadImageFromImage:
-    """Load an image from ros sensor_msgs/Image.msg
+    """Load an image from ros sensor_msgs/Image.msg.
 
     Required keys are "img_prefix" and "img_info" (a dict that must contain the
     key "filename"). Added or updated keys are "filename", "img", "img_shape",
@@ -40,9 +31,11 @@ class LoadImageFromImage:
             Defaults to ``dict(backend='disk')``.
     """
 
-    def __init__(
-        self, to_float32=False, color_type="color", channel_order="bgr", file_client_args=dict(backend="disk")
-    ):
+    def __init__(self,
+                 to_float32=False,
+                 color_type='color',
+                 channel_order='bgr',
+                 file_client_args=dict(backend='disk')):
         self.to_float32 = to_float32
         self.color_type = color_type
         self.channel_order = channel_order
@@ -62,31 +55,31 @@ class LoadImageFromImage:
         if self.file_client is None:
             self.file_client = mmcv.FileClient(**self.file_client_args)
 
-        if results["img_prefix"] is not None:
-            filename = osp.join(results["img_prefix"], results["img_info"]["filename"])
+        if results['img_prefix'] is not None:
+            filename = osp.join(results['img_prefix'],
+                                results['img_info']['filename'])
         else:
-            filename = results["img_info"]["filename"]
+            filename = results['img_info']['filename']
 
         # TODO : use ros cv bridge to load image
         img_bytes = self.file_client.get(filename)
-        img = mmcv.imfrombytes(img_bytes, flag=self.color_type, channel_order=self.channel_order)
+        img = mmcv.imfrombytes(
+            img_bytes, flag=self.color_type, channel_order=self.channel_order)
         if self.to_float32:
             img = img.astype(np.float32)
 
-        results["filename"] = filename
-        results["ori_filename"] = results["img_info"]["filename"]
-        results["img"] = img
-        results["img_shape"] = img.shape
-        results["ori_shape"] = img.shape
-        results["img_fields"] = ["img"]
+        results['filename'] = filename
+        results['ori_filename'] = results['img_info']['filename']
+        results['img'] = img
+        results['img_shape'] = img.shape
+        results['ori_shape'] = img.shape
+        results['img_fields'] = ['img']
         return results
 
     def __repr__(self):
-        repr_str = (
-            f"{self.__class__.__name__}("
-            f"to_float32={self.to_float32}, "
-            f"color_type='{self.color_type}', "
-            f"channel_order='{self.channel_order}', "
-            f"file_client_args={self.file_client_args})"
-        )
+        repr_str = (f'{self.__class__.__name__}('
+                    f'to_float32={self.to_float32}, '
+                    f"color_type='{self.color_type}', "
+                    f"channel_order='{self.channel_order}', "
+                    f'file_client_args={self.file_client_args})')
         return repr_str

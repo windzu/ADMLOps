@@ -1,13 +1,9 @@
-# Copyright (c) OpenMMLab. All rights reserved.
+# Copyright (c) windzu. All rights reserved.
+from .pipelines import LoadPointsFromFileExtension, LoadPointsFromPointCloud2
 from .usd_dataset import USDDataset
 
-from .pipelines import (
-    LoadPointsFromPointCloud2,
-    LoadPointsFromFileExtension,
-)
-
 __all__ = [
-    "USDDataset",
-    "LoadPointsFromPointCloud2",
-    "LoadPointsFromFileExtension",
+    'USDDataset',
+    'LoadPointsFromPointCloud2',
+    'LoadPointsFromFileExtension',
 ]
