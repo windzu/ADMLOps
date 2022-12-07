@@ -58,7 +58,7 @@ ADMLOps是一个针对自动驾驶感知任务的MLOps开源工具，目标是�
 
 - 基于open-mmlab的一系列框架为基础搭建，并确定了基础版本，具体如下
 
-  - mmcv：.6.2
+  - mmcv：1.6.2
   - mmdetection：2.25.1
   - mmsegmentation：0.29.0
   - mmdetection3d：1.0.0rc4
