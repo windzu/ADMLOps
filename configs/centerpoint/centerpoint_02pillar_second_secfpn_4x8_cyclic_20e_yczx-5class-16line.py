@@ -10,7 +10,7 @@ Datasets Settings
     3. 数据集的预处理方式(pipeline)
 """
 data_root = os.path.join(os.environ['ADMLOPS'], 'data', 'nuScenes_v1.0_mini')
-dataset_type = 'NuScenesDataset'
+dataset_type = 'KittiDataset'
 class_names = [
     'car',
     'truck',

@@ -210,8 +210,7 @@ model = dict(
                 [0.4, 0.4, 1],
             ],
             custom_values=[
-                0,
-                0,
+                0, 0
             ],  # correspond to code_size=9 为bbox尾部添加额外两个0 从 7 扩中到 9
             rotations=[0, 1.57],
             reshape_out=True,
@@ -244,17 +243,8 @@ model = dict(
                 ignore_iof_thr=-1,
             ),
             allowed_border=0,
-            code_weight=[
-                1.0,
-                1.0,
-                1.0,
-                1.0,
-                1.0,
-                1.0,
-                1.0,
-                0.2,
-                0.2,
-            ],  # correspond to code_size=9
+            code_weight=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2
+                         ],  # code_size=9
             pos_weight=-1,
             debug=False,
         )),

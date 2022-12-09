@@ -122,7 +122,9 @@ Pedestrian 0.00 0 -0.20 712.40 143.00 810.73 307.92 1.89 0.48 1.20 1.84 1.47 8.4
 在本工程中转换使用如下命令：
 
 ```bash
-python tools/create_data.py kitti --root-path ./data/KITTI --out-dir ./data/KITTI --extra-tag kitti
+conda activate ADMLOps && \
+cd $ADMLOPS && \
+python3 tools/create_data.py kitti --root-path ./data/kitti --out-dir ./data/kitti --extra-tag kitti
 ```
 
 ## Make Dataset

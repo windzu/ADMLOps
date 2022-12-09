@@ -69,7 +69,7 @@ python3 tools/rosrun.py --config $ADMLOPS/configs/pointpillars/hv_pointpillars_f
 ```bash
 conda activate ADMLOps && \
 cd $ADMLOPS && \
-python tools/create_data.py kitti --root-path ./data/KITTI --out-dir ./data/KITTI --extra-tag kitti
+python tools/create_data.py kitti --root-path ./data/kitti --out-dir ./data/kitti --extra-tag kitti
 ```
 
 ### Train

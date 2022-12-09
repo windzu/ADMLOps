@@ -110,7 +110,7 @@ mim install mmdet3d==$MMDET3D_VERSION
     export CONDA_ENV_NAME=ADMLOps && \
     conda activate $CONDA_ENV_NAME && \
     cd $ADMLOPS && \
-    pip install -e .
+    pip3 install -e .
     ```
 
 ### 部署环境

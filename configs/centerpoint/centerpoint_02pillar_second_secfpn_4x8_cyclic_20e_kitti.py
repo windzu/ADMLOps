@@ -17,12 +17,10 @@ Datasets Settings
     - eval_pipeline : 评估数据集的预处理方式，一般不涉及数据增强
 """
 data_root = os.path.join(os.environ['ADMLOPS'], 'data', 'kitti')
-dataset_type = 'KittiDataset'
+dataset_type = 'AicvDataset'
 class_names = ['Pedestrian', 'Cyclist', 'Car']
 point_cloud_range = [0, -39.68, -3, 69.12, 39.68, 1]
 input_modality = dict(use_lidar=True, use_camera=False)
-load_dim = 4
-use_dim = 4
 # NOTE : sampler的设置需要和class对应
 db_sampler = dict(
     data_root=data_root,
@@ -42,20 +40,27 @@ train_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=load_dim,
-        use_dim=use_dim,
-        file_client_args=file_client_args),
+        load_dim=4,
+        use_dim=4,
+        file_client_args=file_client_args,
+    ),
     dict(
         type='LoadAnnotations3D',
         with_bbox_3d=True,
         with_label_3d=True,
-        file_client_args=file_client_args),
+        file_client_args=file_client_args,
+    ),
     dict(type='ObjectSample', db_sampler=db_sampler),
-    dict(type='RandomFlip3D', flip_ratio_bev_horizontal=0.5),
+    dict(
+        type='RandomFlip3D',
+        sync_2d=False,  # 默认为True,但是这里没有2d数据
+        flip_ratio_bev_horizontal=0.5,
+        flip_ratio_bev_vertical=0.5),
     dict(
         type='GlobalRotScaleTrans',
         rot_range=[-0.78539816, 0.78539816],
-        scale_ratio_range=[0.95, 1.05]),
+        scale_ratio_range=[0.95, 1.05],
+    ),
     dict(type='PointsRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='PointShuffle'),
@@ -67,8 +72,8 @@ test_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=load_dim,
-        use_dim=use_dim,
+        load_dim=4,
+        use_dim=4,
         file_client_args=file_client_args,
     ),
     dict(
@@ -81,7 +86,8 @@ test_pipeline = [
                 type='GlobalRotScaleTrans',
                 rot_range=[0, 0],
                 scale_ratio_range=[1.0, 1.0],
-                translation_std=[0, 0, 0]),
+                translation_std=[0, 0, 0],
+            ),
             dict(type='RandomFlip3D'),
             dict(
                 type='PointsRangeFilter', point_cloud_range=point_cloud_range),
@@ -99,8 +105,8 @@ eval_pipeline = [
     dict(
         type='LoadPointsFromFile',
         coord_type='LIDAR',
-        load_dim=load_dim,
-        use_dim=use_dim,
+        load_dim=4,
+        use_dim=4,
         file_client_args=file_client_args,
     ),
     dict(
@@ -166,25 +172,26 @@ Models Settings
     2. 模型的结构细节
     3. 模型的损失函数等
 """
-voxel_size = [0.16, 0.16, 4]
-
+voxel_size = [0.2, 0.2, 8]  # 与 point_cloud_range 相关
 model = dict(
-    type='VoxelNet',
-    voxel_layer=dict(
-        max_num_points=32,  # max_points_per_voxel
-        point_cloud_range=point_cloud_range,
+    type='CenterPoint',
+    pts_voxel_layer=dict(
+        max_num_points=20,
         voxel_size=voxel_size,
-        max_voxels=(16000, 40000),  # (training, testing) max_voxels
+        max_voxels=(30000, 40000),
+        point_cloud_range=point_cloud_range,
     ),
-    voxel_encoder=dict(
+    pts_voxel_encoder=dict(
         type='PillarFeatureNet',
-        in_channels=use_dim,
+        in_channels=4,
         feat_channels=[64],
         with_distance=False,
         voxel_size=voxel_size,
+        norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
+        legacy=False,
         point_cloud_range=point_cloud_range,
     ),
-    middle_encoder=dict(
+    pts_middle_encoder=dict(
         type='PointPillarsScatter',
         in_channels=64,
         output_shape=[
@@ -192,91 +199,89 @@ model = dict(
             int((point_cloud_range[3] - point_cloud_range[0]) / voxel_size[0])
         ],
     ),
-    backbone=dict(
+    pts_backbone=dict(
         type='SECOND',
         in_channels=64,
+        out_channels=[64, 128, 256],
         layer_nums=[3, 5, 5],
         layer_strides=[2, 2, 2],
-        out_channels=[64, 128, 256],
+        norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
+        conv_cfg=dict(type='Conv2d', bias=False),
     ),
-    neck=dict(
+    pts_neck=dict(
         type='SECONDFPN',
         in_channels=[64, 128, 256],
-        upsample_strides=[1, 2, 4],
         out_channels=[128, 128, 128],
+        upsample_strides=[0.5, 1, 2],
+        norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
+        upsample_cfg=dict(type='deconv', bias=False),
+        use_conv_for_no_stride=True,
     ),
-    bbox_head=dict(
-        type='Anchor3DHead',
-        num_classes=len(class_names),
-        in_channels=384,
-        feat_channels=384,
-        use_direction_classifier=True,
-        assign_per_class=True,
-        anchor_generator=dict(
-            type='AlignedAnchor3DRangeGenerator',
-            ranges=[
-                [0, -39.68, -0.6, 69.12, 39.68, -0.6],
-                [0, -39.68, -0.6, 69.12, 39.68, -0.6],
-                [0, -39.68, -1.78, 69.12, 39.68, -1.78],
-            ],
-            sizes=[[0.8, 0.6, 1.73], [1.76, 0.6, 1.73], [3.9, 1.6, 1.56]],
-            rotations=[0, 1.57],
-            reshape_out=False,
+    pts_bbox_head=dict(
+        type='CenterHead',
+        in_channels=sum([128, 128, 128]),
+        tasks=[
+            dict(num_class=1, class_names=['car']),
+            dict(num_class=2, class_names=['truck', 'construction_vehicle']),
+            dict(num_class=2, class_names=['bus', 'trailer']),
+            dict(num_class=1, class_names=['barrier']),
+            dict(num_class=2, class_names=['motorcycle', 'bicycle']),
+            dict(num_class=2, class_names=['pedestrian', 'traffic_cone']),
+        ],
+        common_heads=dict(
+            reg=(2, 2), height=(1, 2), dim=(3, 2), rot=(2, 2), vel=(2, 2)),
+        share_conv_channel=64,
+        bbox_coder=dict(
+            type='CenterPointBBoxCoder',
+            post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
+            max_num=500,
+            score_threshold=0.1,
+            out_size_factor=4,
+            voxel_size=voxel_size[:2],
+            code_size=9,
+            pc_range=point_cloud_range[:2],
         ),
-        diff_rad_by_sin=True,
-        bbox_coder=dict(type='DeltaXYZWLHRBBoxCoder'),
-        loss_cls=dict(
-            type='FocalLoss',
-            use_sigmoid=True,
-            gamma=2.0,
-            alpha=0.25,
-            loss_weight=1.0,
-        ),
-        loss_bbox=dict(type='SmoothL1Loss', beta=1.0 / 9.0, loss_weight=2.0),
-        loss_dir=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.2),
+        separate_head=dict(
+            type='SeparateHead', init_bias=-2.19, final_kernel=3),
+        loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
+        loss_bbox=dict(type='L1Loss', reduction='mean', loss_weight=0.25),
+        norm_bbox=True,
     ),
     # model training and testing settings
     train_cfg=dict(
-        assigner=[
-            dict(  # for Pedestrian
-                type='MaxIoUAssigner',
-                iou_calculator=dict(type='BboxOverlapsNearest3D'),
-                pos_iou_thr=0.5,
-                neg_iou_thr=0.35,
-                min_pos_iou=0.35,
-                ignore_iof_thr=-1,
-            ),
-            dict(  # for Cyclist
-                type='MaxIoUAssigner',
-                iou_calculator=dict(type='BboxOverlapsNearest3D'),
-                pos_iou_thr=0.5,
-                neg_iou_thr=0.35,
-                min_pos_iou=0.35,
-                ignore_iof_thr=-1,
-            ),
-            dict(  # for Car
-                type='MaxIoUAssigner',
-                iou_calculator=dict(type='BboxOverlapsNearest3D'),
-                pos_iou_thr=0.6,
-                neg_iou_thr=0.45,
-                min_pos_iou=0.45,
-                ignore_iof_thr=-1,
-            ),
-        ],
-        allowed_border=0,
-        pos_weight=-1,
-        debug=False,
-    ),
+        pts=dict(
+            point_cloud_range=point_cloud_range,
+            grid_size=[
+                int((point_cloud_range[3] - point_cloud_range[0]) /
+                    voxel_size[0]),
+                int((point_cloud_range[4] - point_cloud_range[1]) /
+                    voxel_size[1]),
+                int((point_cloud_range[5] - point_cloud_range[2]) /
+                    voxel_size[2])
+            ],
+            voxel_size=voxel_size,
+            out_size_factor=4,
+            dense_reg=1,
+            gaussian_overlap=0.1,
+            max_objs=500,
+            min_radius=2,
+            code_weights=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2],
+        )),
     test_cfg=dict(
-        use_rotate_nms=True,
-        nms_across_levels=False,
-        nms_thr=0.01,
-        score_thr=0.1,
-        min_bbox_size=0,
-        nms_pre=100,
-        max_num=50,
-    ),
+        pts=dict(
+            post_center_limit_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
+            max_per_img=500,
+            max_pool_nms=False,
+            min_radius=[4, 12, 10, 1, 0.85, 0.175],
+            score_threshold=0.1,
+            pc_range=point_cloud_range[:2],
+            out_size_factor=4,
+            voxel_size=voxel_size[:2],
+            nms_type='rotate',
+            pre_max_size=1000,
+            post_max_size=83,
+            nms_thr=0.2,
+        )),
 )
 """
 Schedules Settings
@@ -286,8 +291,8 @@ Schedules Settings
     2. lr_config 的设置
     3. runner 的设置
 """
-lr = 0.001
-optimizer = dict(type='AdamW', lr=lr, betas=(0.95, 0.99), weight_decay=0.01)
+optimizer = dict(type='AdamW', lr=1e-4, weight_decay=0.01)
+# max_norm=10 is better for SECOND
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 lr_config = dict(
     policy='cyclic',
@@ -309,8 +314,7 @@ Runtime Settings
     2. load_from 的设置 (加载预训练模型)
     3. workflow 的设置
 """
-runner = dict(type='EpochBasedRunner', max_epochs=80)
-evaluation = dict(interval=2)
+runner = dict(type='EpochBasedRunner', max_epochs=20)
 
 checkpoint_config = dict(interval=1)
 # yapf:disable push
@@ -321,7 +325,6 @@ log_config = dict(
     interval=50,
     hooks=[dict(type='TextLoggerHook'), dict(type='TensorboardLoggerHook')],
 )
-
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
@@ -338,6 +341,6 @@ mp_start_method = 'fork'
 load_from = os.path.join(
     os.environ['ADMLOPS'],
     'checkpoints',
-    'pointpillars',
-    'hv_pointpillars_secfpn_6x8_160e_kitti-3d-3class.pth',
+    'centerpoint',
+    'centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_nus.pth',
 )

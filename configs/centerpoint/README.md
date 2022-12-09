@@ -8,7 +8,7 @@
 
 ### Train
 ```bash
-conda activate ADMLOps1.0 && \
+conda activate ADMLOps && \
 cd $ADMLOPS && \
 python3 tools/mmdet3d_train.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus.py
 ```
@@ -16,7 +16,7 @@ python3 tools/mmdet3d_train.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar
 ### Resume
 
 ```bash
-conda activate ADMLOps1.0 && \
+conda activate ADMLOps && \
 cd $ADMLOPS && \
 python3 tools/train.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus.py \
 --resume-from $ADMLOPS/work_dirs/centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus/latest.pth
@@ -25,7 +25,7 @@ python3 tools/train.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second_
 ### Eval
 
 ```bash
-conda activate ADMLOps1.0 && \
+conda activate ADMLOps && \
 cd $ADMLOPS && \
 python3 tools/test.py $ADMLOPS/local/configs/centerpoint/centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus.py \
 ./work_dirs/centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus/latest.pth \
@@ -35,7 +35,7 @@ python3 tools/test.py $ADMLOPS/local/configs/centerpoint/centerpoint_02pillar_se
 ### ROS TEST
 
 ```bash
-conda activate ADMLOps1.0 && \
+conda activate ADMLOps && \
 cd $ADMLOPS && \
 python3 tools/rosrun.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus.py \
 ./checkpoints/centerpoint/centerpoint_02pillar_second_secfpn_circlenms_4x8_cyclic_20e_nus.pth \
@@ -46,3 +46,14 @@ python3 tools/rosrun.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second
 --republish
 ```
 
+## Deploy
+
+### 导出ONNX
+
+```bash
+conda activate ADMLOps && \
+cd $ADMLOPS && \
+python3 tools/onnx_tools/centerpoint/export_onnx.py ./demo/data/kitti/kitti_000008.bin \
+$ADMLOPS/configs/centerpoint/centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_nus.py \
+$ADMLOPS/checkpoints/centerpoint/centerpoint_02pillar_second_secfpn_dcn_4x8_cyclic_20e_nus.pth
+```
