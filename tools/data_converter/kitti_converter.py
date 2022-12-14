@@ -4,9 +4,9 @@ from pathlib import Path
 
 import mmcv
 import numpy as np
+from mmdet3d.core.bbox import box_np_ops, points_cam2img
 from nuscenes.utils.geometry_utils import view_points
 
-from mmdet3d.core.bbox import box_np_ops, points_cam2img
 from .kitti_data_utils import WaymoInfoGatherer, get_kitti_image_info
 from .nuscenes_converter import post_process_coords
 
@@ -116,6 +116,7 @@ class _NumPointsInGTCalculater:
 def _calculate_num_points_in_gt(data_path,
                                 infos,
                                 relative_path,
+                                only_lidar=False,
                                 remove_outside=True,
                                 num_features=4):
     for info in mmcv.track_iter_progress(infos):
@@ -128,12 +129,17 @@ def _calculate_num_points_in_gt(data_path,
             v_path = pc_info['velodyne_path']
         points_v = np.fromfile(
             v_path, dtype=np.float32, count=-1).reshape([-1, num_features])
-        rect = calib['R0_rect']
-        Trv2c = calib['Tr_velo_to_cam']
-        P2 = calib['P2']
-        if remove_outside:
-            points_v = box_np_ops.remove_outside_points(
-                points_v, rect, Trv2c, P2, image_info['image_shape'])
+
+        # 如果 only_lidar 为 True，那么就不需要进行投影计算视锥的操作
+        if only_lidar:
+            pass
+        else:
+            rect = calib['R0_rect']
+            Trv2c = calib['Tr_velo_to_cam']
+            P2 = calib['P2']
+            if remove_outside:
+                points_v = box_np_ops.remove_outside_points(
+                    points_v, rect, Trv2c, P2, image_info['image_shape'])
 
         # points_v = points_v[points_v[:, 0] > 0]
         annos = info['annos']
@@ -142,10 +148,17 @@ def _calculate_num_points_in_gt(data_path,
         dims = annos['dimensions'][:num_obj]
         loc = annos['location'][:num_obj]
         rots = annos['rotation_y'][:num_obj]
-        gt_boxes_camera = np.concatenate([loc, dims, rots[..., np.newaxis]],
-                                         axis=1)
-        gt_boxes_lidar = box_np_ops.box_camera_to_lidar(
-            gt_boxes_camera, rect, Trv2c)
+
+        # 如果 only_lidar 为 True，那么3d bbox的label是在lidar坐标系下的
+        # 所以就不需要进行从camera转lidar,以及计算在投影视锥内的gt
+        if only_lidar:
+            gt_boxes_lidar = np.concatenate([loc, dims, rots[..., np.newaxis]],
+                                            axis=1)
+        else:
+            gt_boxes_camera = np.concatenate(
+                [loc, dims, rots[..., np.newaxis]], axis=1)
+            gt_boxes_lidar = box_np_ops.box_camera_to_lidar(
+                gt_boxes_camera, rect, Trv2c)
         indices = box_np_ops.points_in_rbbox(points_v[:, :3], gt_boxes_lidar)
         num_points_in_gt = indices.sum(0)
         num_ignored = len(annos['dimensions']) - num_obj
@@ -157,6 +170,7 @@ def _calculate_num_points_in_gt(data_path,
 def create_kitti_info_file(data_path,
                            pkl_prefix='kitti',
                            with_plane=False,
+                           only_lidar=False,
                            save_path=None,
                            relative_path=True):
     """Create info file of KITTI dataset.
@@ -168,6 +182,8 @@ def create_kitti_info_file(data_path,
         pkl_prefix (str, optional): Prefix of the info file to be generated.
             Default: 'kitti'.
         with_plane (bool, optional): Whether to use plane information.
+            Default: False.
+        only_lidar (bool, optional): Whether just use lidar data.
             Default: False.
         save_path (str, optional): Path to save the info file.
             Default: None.
@@ -190,9 +206,15 @@ def create_kitti_info_file(data_path,
         velodyne=True,
         calib=True,
         with_plane=with_plane,
+        only_lidar=only_lidar,  # 添加 only_lidar 参数进行判断
         image_ids=train_img_ids,
         relative_path=relative_path)
-    _calculate_num_points_in_gt(data_path, kitti_infos_train, relative_path)
+    _calculate_num_points_in_gt(
+        data_path,
+        kitti_infos_train,
+        relative_path,
+        only_lidar=only_lidar,  # 添加 only_lidar 参数进行判断
+    )
     filename = save_path / f'{pkl_prefix}_infos_train.pkl'
     print(f'Kitti info train file is saved to {filename}')
     mmcv.dump(kitti_infos_train, filename)
@@ -202,9 +224,11 @@ def create_kitti_info_file(data_path,
         velodyne=True,
         calib=True,
         with_plane=with_plane,
+        only_lidar=only_lidar,
         image_ids=val_img_ids,
         relative_path=relative_path)
-    _calculate_num_points_in_gt(data_path, kitti_infos_val, relative_path)
+    _calculate_num_points_in_gt(data_path, kitti_infos_val, relative_path,
+                                only_lidar)
     filename = save_path / f'{pkl_prefix}_infos_val.pkl'
     print(f'Kitti info val file is saved to {filename}')
     mmcv.dump(kitti_infos_val, filename)
@@ -219,6 +243,7 @@ def create_kitti_info_file(data_path,
         velodyne=True,
         calib=True,
         with_plane=False,
+        only_lidar=only_lidar,
         image_ids=test_img_ids,
         relative_path=relative_path)
     filename = save_path / f'{pkl_prefix}_infos_test.pkl'
@@ -305,6 +330,7 @@ def create_waymo_info_file(data_path,
 def _create_reduced_point_cloud(data_path,
                                 info_path,
                                 save_path=None,
+                                only_lidar=False,
                                 back=False,
                                 num_features=4,
                                 front_camera_id=2):
@@ -333,20 +359,26 @@ def _create_reduced_point_cloud(data_path,
         points_v = np.fromfile(
             str(v_path), dtype=np.float32,
             count=-1).reshape([-1, num_features])
-        rect = calib['R0_rect']
-        if front_camera_id == 2:
-            P2 = calib['P2']
+
+        # 如果 only_lidar 为 True，不需要对点云进行移除操作
+        if only_lidar:
+            points_v = points_v
         else:
-            P2 = calib[f'P{str(front_camera_id)}']
-        Trv2c = calib['Tr_velo_to_cam']
-        # first remove z < 0 points
-        # keep = points_v[:, -1] > 0
-        # points_v = points_v[keep]
-        # then remove outside.
-        if back:
-            points_v[:, 0] = -points_v[:, 0]
-        points_v = box_np_ops.remove_outside_points(points_v, rect, Trv2c, P2,
-                                                    image_info['image_shape'])
+            rect = calib['R0_rect']
+            if front_camera_id == 2:
+                P2 = calib['P2']
+            else:
+                P2 = calib[f'P{str(front_camera_id)}']
+            Trv2c = calib['Tr_velo_to_cam']
+            # first remove z < 0 points
+            # keep = points_v[:, -1] > 0
+            # points_v = points_v[keep]
+            # then remove outside.
+            if back:
+                points_v[:, 0] = -points_v[:, 0]
+            points_v = box_np_ops.remove_outside_points(
+                points_v, rect, Trv2c, P2, image_info['image_shape'])
+
         if save_path is None:
             save_dir = v_path.parent.parent / (v_path.parent.stem + '_reduced')
             if not save_dir.exists():
@@ -365,6 +397,7 @@ def _create_reduced_point_cloud(data_path,
 
 def create_reduced_point_cloud(data_path,
                                pkl_prefix,
+                               only_lidar=False,
                                train_info_path=None,
                                val_info_path=None,
                                test_info_path=None,
@@ -394,18 +427,33 @@ def create_reduced_point_cloud(data_path,
         test_info_path = Path(data_path) / f'{pkl_prefix}_infos_test.pkl'
 
     print('create reduced point cloud for training set')
-    _create_reduced_point_cloud(data_path, train_info_path, save_path)
+    _create_reduced_point_cloud(
+        data_path, train_info_path, save_path, only_lidar=only_lidar)
     print('create reduced point cloud for validation set')
-    _create_reduced_point_cloud(data_path, val_info_path, save_path)
+    _create_reduced_point_cloud(
+        data_path, val_info_path, save_path, only_lidar=only_lidar)
     print('create reduced point cloud for testing set')
-    _create_reduced_point_cloud(data_path, test_info_path, save_path)
+    _create_reduced_point_cloud(
+        data_path, test_info_path, save_path, only_lidar=only_lidar)
     if with_back:
         _create_reduced_point_cloud(
-            data_path, train_info_path, save_path, back=True)
+            data_path,
+            train_info_path,
+            save_path,
+            only_lidar=only_lidar,
+            back=True)
         _create_reduced_point_cloud(
-            data_path, val_info_path, save_path, back=True)
+            data_path,
+            val_info_path,
+            save_path,
+            only_lidar=only_lidar,
+            back=True)
         _create_reduced_point_cloud(
-            data_path, test_info_path, save_path, back=True)
+            data_path,
+            test_info_path,
+            save_path,
+            only_lidar=only_lidar,
+            back=True)
 
 
 def export_2d_annotation(root_path, info_path, mono3d=True):

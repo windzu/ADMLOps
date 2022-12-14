@@ -16,22 +16,47 @@ Datasets Settings
     - test_pipeline : 测试数据集的预处理方式,可能会多出一些适用于OTA数据增强的操作
     - eval_pipeline : 评估数据集的预处理方式，一般不涉及数据增强
 """
-data_root = os.path.join(os.environ['ADMLOPS'], 'data', 'kitti')
-dataset_type = 'KittiDataset'
-class_names = ['Pedestrian', 'Cyclist', 'Car']
+data_root = os.path.join(os.environ['ADMLOPS'], 'data', 'test')
+dataset_type = 'KittiExtensionDataset'
+class_names = [
+    'small_vehicles',
+    'big_vehicles',
+    'pedestrian',
+    'bicyclist',
+    'traffic_cone',
+    'others',
+]
 point_cloud_range = [-60, -60, -3, 60, 60, 3]
 input_modality = dict(use_lidar=True, use_camera=False)
 # NOTE : sampler的设置需要和class对应
 db_sampler = dict(
+    type="DataBaseSampler",
     data_root=data_root,
     info_path=os.path.join(data_root, 'kitti_dbinfos_train.pkl'),
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(Car=5, Pedestrian=5, Cyclist=5),
+        # 设置各个类别滤除的最小点数量,根据数据集的情况进行设置
+        # 一般来说,较大的目标需要更多的点
+        filter_by_min_points=dict(
+            small_vehicles=5,
+            big_vehicles=5,
+            pedestrian=5,
+            bicyclist=5,
+            traffic_cone=5,
+            others=5,
+        ),
     ),
     classes=class_names,
-    sample_groups=dict(Car=15, Pedestrian=15, Cyclist=15),
+    # 设置单帧中各个类别的最大采样数量,如果多了则剔除一些，如果少了则采用伪造数据
+    sample_groups=dict(
+        small_vehicles=15,
+        big_vehicles=15,
+        pedestrian=15,
+        bicyclist=15,
+        traffic_cone=15,
+        others=15,
+    ),
 )
 
 file_client_args = dict(backend='disk')
@@ -127,6 +152,7 @@ data = dict(
             data_root=data_root,
             ann_file=os.path.join(data_root, 'kitti_infos_train.pkl'),
             split='training',
+            only_lidar=True,  # 只使用LiDAR数据
             pts_prefix='velodyne_reduced',
             pipeline=train_pipeline,
             modality=input_modality,

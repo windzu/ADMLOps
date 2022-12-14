@@ -128,3 +128,14 @@ python3 tools/create_data.py kitti --root-path ./data/kitti --out-dir ./data/kit
 ```
 
 ## Make Dataset
+
+## kitti 格式拓展
+
+这里测试仅仅使用lidar数据，而没有使用image数据
+
+```bash
+conda activate ADMLOps && \
+cd $ADMLOPS && \
+python3 tools/create_data.py kitti --root-path ./data/test --out-dir ./data/test --extra-tag kitti --only-lidar
+
+```

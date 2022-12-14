@@ -3,6 +3,8 @@ import argparse
 from os import path as osp
 
 from mmdet3d_ext.datasets import *  # noqa: F401, F403
+from mmdet_ext.datasets import *  # noqa: F401, F403
+from mmdet_ext.models import *  # noqa: F401, F403
 # local
 from tools.data_converter import indoor_converter as indoor
 from tools.data_converter import kitti_converter as kitti
@@ -17,7 +19,8 @@ def kitti_data_prep(root_path,
                     info_prefix,
                     version,
                     out_dir,
-                    with_plane=False):
+                    with_plane=False,
+                    only_lidar=False):
     """Prepare data related to Kitti dataset.
 
     Related data consists of '.pkl' files recording basic infos,
@@ -30,29 +33,49 @@ def kitti_data_prep(root_path,
         out_dir (str): Output directory of the groundtruth database info.
         with_plane (bool, optional): Whether to use plane information.
             Default: False.
+        only_lidar (bool, optional): Whether just use lidar data.
     """
-    kitti.create_kitti_info_file(root_path, info_prefix, with_plane)
-    kitti.create_reduced_point_cloud(root_path, info_prefix)
+    kitti.create_kitti_info_file(
+        root_path, info_prefix, with_plane, only_lidar=only_lidar)
+    kitti.create_reduced_point_cloud(
+        root_path, info_prefix, only_lidar=only_lidar)
 
     info_train_path = osp.join(root_path, f'{info_prefix}_infos_train.pkl')
     info_val_path = osp.join(root_path, f'{info_prefix}_infos_val.pkl')
     info_trainval_path = osp.join(root_path,
                                   f'{info_prefix}_infos_trainval.pkl')
     info_test_path = osp.join(root_path, f'{info_prefix}_infos_test.pkl')
-    kitti.export_2d_annotation(root_path, info_train_path)
-    kitti.export_2d_annotation(root_path, info_val_path)
-    kitti.export_2d_annotation(root_path, info_trainval_path)
-    kitti.export_2d_annotation(root_path, info_test_path)
 
-    create_groundtruth_database(
-        'KittiDataset',
-        root_path,
-        info_prefix,
-        f'{out_dir}/{info_prefix}_infos_train.pkl',
-        relative_path=False,
-        mask_anno_path='instances_train.json',
-        with_mask=(version == 'mask'),
-    )
+    # 如果只使用lidar数据，那么不需要生成2D标注
+    if only_lidar:
+        pass
+    else:
+        kitti.export_2d_annotation(root_path, info_train_path)
+        kitti.export_2d_annotation(root_path, info_val_path)
+        kitti.export_2d_annotation(root_path, info_trainval_path)
+        kitti.export_2d_annotation(root_path, info_test_path)
+
+    if only_lidar:
+        create_groundtruth_database(
+            'KittiExtensionDataset',
+            root_path,
+            info_prefix,
+            f'{out_dir}/{info_prefix}_infos_train.pkl',
+            relative_path=False,
+            mask_anno_path='instances_train.json',
+            with_mask=(version == 'mask'),
+            only_lidar=only_lidar,
+        )
+    else:
+        create_groundtruth_database(
+            'KittiDataset',
+            root_path,
+            info_prefix,
+            f'{out_dir}/{info_prefix}_infos_train.pkl',
+            relative_path=False,
+            mask_anno_path='instances_train.json',
+            with_mask=(version == 'mask'),
+        )
 
 
 def nuscenes_data_prep(root_path,
@@ -249,6 +272,11 @@ parser.add_argument(
     '--with-plane',
     action='store_true',
     help='Whether to use plane information for kitti.')
+# 添加only_lidar模式
+parser.add_argument(
+    '--only-lidar',
+    action='store_true',
+    help='Whether just use lidar information for kitti.')
 parser.add_argument(
     '--num-points',
     type=int,
@@ -273,6 +301,7 @@ if __name__ == '__main__':
             version=args.version,
             out_dir=args.out_dir,
             with_plane=args.with_plane,
+            only_lidar=args.only_lidar,
         )
     elif args.dataset == 'nuscenes' and args.version != 'v1.0-mini':
         train_version = f'{args.version}-trainval'

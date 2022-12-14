@@ -32,6 +32,7 @@ python3 tools/test.py $ADMLOPS/local/configs/centerpoint/centerpoint_02pillar_se
 --eval bbox
 ```
 
+
 ### ROS TEST
 
 ```bash
@@ -46,6 +47,27 @@ python3 tools/rosrun.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second
 --republish
 ```
 
+
+## KITTI
+
+### Train
+
+```bash
+conda activate ADMLOps && \
+cd $ADMLOPS && \
+python3 tools/mmdet3d_train.py $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_kitti.py
+```
+
+### 导出ONNX
+> 导出测试成功
+```bash
+conda activate ADMLOps && \
+cd $ADMLOPS && \
+python3 tools/onnx_tools/centerpoint/export_onnx.py ./demo/data/kitti/kitti_000008.bin \
+./configs/centerpoint/centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_kitti.py \
+./work_dirs/centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_kitti/epoch_1.pth
+```
+
 ## Deploy
 
 ### 导出ONNX
@@ -57,3 +79,4 @@ python3 tools/onnx_tools/centerpoint/export_onnx.py ./demo/data/kitti/kitti_0000
 $ADMLOPS/configs/centerpoint/centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_nus.py \
 $ADMLOPS/checkpoints/centerpoint/centerpoint_02pillar_second_secfpn_dcn_4x8_cyclic_20e_nus.pth
 ```
+

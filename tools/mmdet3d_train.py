@@ -20,6 +20,10 @@ from mmdet3d.utils import collect_env, get_root_logger
 from mmdet.apis import set_random_seed
 from mmseg import __version__ as mmseg_version
 
+from mmdet3d_ext.datasets import *  # noqa: F401, F403
+from mmdet_ext.datasets import *  # noqa: F401, F403
+from mmdet_ext.models import *  # noqa: F401, F403
+
 try:
     # If mmdet version > 2.20.0, setup_multi_processes would be imported and
     # used from mmdet instead of mmdet3d.
