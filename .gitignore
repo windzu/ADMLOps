@@ -1,6 +1,6 @@
 # local file
 local
-./data
+data
 checkpoints
 wandb
 work_dirs
