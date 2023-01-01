@@ -129,7 +129,7 @@ On The Way
     export CONDA_ENV_NAME=ADMLOps && \
     conda activate $CONDA_ENV_NAME && \
     cd $ADMLOPS && \
-    python demo/image_demo.py demo/data/demo.jpg \
+    python3 demo/image_demo.py demo/data/demo.jpg \
     configs/yolox/yolox_s_8x8_300e_coco.py \
     checkpoints/yolox/yolox_s_8x8_300e_coco.pth \
     --device cuda:0

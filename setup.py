@@ -17,10 +17,6 @@ if __name__ == '__main__':
             'Programming Language :: Python :: 3',
             'Programming Language :: Python :: 3.8',
         ],
-        install_requires=[
-            'rospkg',
-            'future',
-            'wandb',
-        ],
+        install_requires=['rospkg', 'future', 'wandb', 'wadda'],
         license='Apache License 2.0',
     )
