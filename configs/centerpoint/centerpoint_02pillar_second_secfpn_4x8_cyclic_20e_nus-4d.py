@@ -2,7 +2,12 @@
 """
 **Train**
 ```bash
+# single GPU
 python3 tools/mmdet3d_train.py ./configs/centerpoint/centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_nus-4d.py
+
+# multi GPU
+./tools/mmdet3d_dist_train.sh ./configs/centerpoint/centerpoint_02pillar_second_secfpn_4x8_cyclic_20e_nus-4d.py 1
+
 ```
 
 **Resume**
@@ -21,7 +26,6 @@ python3 tools/onnx_tools/centerpoint/export_onnx.py ./demo/data/nuscenes/test.bi
 """
 
 import os
-
 """
 Datasets Settings
 -----------------
